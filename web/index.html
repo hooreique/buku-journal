@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f5ef">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="둘만의 시간을 천천히 모으는 작은 기록장.">
+  <title>buku journal · 우리의 기록</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%232d4b40'/%3E%3Ctext x='32' y='47' text-anchor='middle' font-family='Georgia' font-size='51' fill='%23f7f5ef'%3Eb%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+  <div id="loading" class="initial-loading" role="status"><span class="brand-mark">b.</span><span>기록장을 여는 중이에요</span></div>
+
+  <section id="login-view" class="login-view" hidden aria-labelledby="login-heading">
+    <div class="login-paper">
+      <a class="wordmark" href="/" aria-label="buku journal 홈">buku<span class="wordmark-dot">.</span><span class="wordmark-sub">journal</span></a>
+      <div class="login-art" aria-hidden="true"><span class="paper-one"></span><span class="paper-two"></span><span class="paper-three"><i></i><i></i><i></i><b>우리의 날들</b></span><span class="art-spark">✳</span></div>
+      <p class="eyebrow">둘만의 작은 기록장</p>
+      <h1 id="login-heading">우리 이야기,<br>여기서 이어가요.</h1>
+      <p class="login-description">함께 걷던 길, 별것 아닌 대화.<br>기억하고 싶은 순간들을 차곡차곡.</p>
+      <form id="login-form">
+        <label for="access-key">접속 키</label>
+        <input id="access-key" type="password" autocomplete="current-password" placeholder="접속 키를 입력해 주세요" required>
+        <p id="login-error" class="form-error" role="alert" hidden></p>
+        <button id="login-button" class="button primary full-width" type="submit">기록장 열기 <span aria-hidden="true">↗</span></button>
+      </form>
+      <details class="login-help"><summary>접속 키는 어디에 있나요?</summary><p>서버의 <code>~/.config/buku-journal/token</code> 파일에서 확인할 수 있어요. 설정 경로를 바꿨다면 해당 설정 폴더를 확인해 주세요.</p></details>
+      <p class="login-footnote"><span aria-hidden="true">◈</span> 접속 키를 가진 우리만 볼 수 있어요.</p>
+    </div>
+  </section>
+
+  <div id="app-view" hidden>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="wordmark" href="/" aria-label="buku journal 홈">buku<span class="wordmark-dot">.</span><span class="wordmark-sub">journal</span></a>
+        <span class="header-caption">우리의 시간을 모으는 곳</span>
+        <nav class="header-actions" aria-label="기록장 메뉴">
+          <button id="history-button" class="button quiet" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11a9 9 0 1 1 2.4 7M3 5v6h6M12 7v5l3 2"/></svg><span>변경 이력</span></button>
+          <button id="logout-button" class="icon-button" type="button" aria-label="기록장 잠그기" title="기록장 잠그기"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0v4M12 14v3"/></svg></button>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main" class="page-layout">
+      <div class="journal-column">
+        <section class="intro" aria-labelledby="page-heading">
+          <div><p class="eyebrow">OUR LITTLE JOURNAL</p><h1 id="page-heading">함께한 날들<span class="heading-dot">.</span></h1><p class="intro-description">사소해서 더 오래 기억하고 싶은 이야기.</p></div>
+          <span class="intro-flower" aria-hidden="true">✳</span>
+        </section>
+
+        <section class="composer" aria-labelledby="composer-heading">
+          <div class="composer-heading"><span class="small-avatar" aria-hidden="true">b.</span><h2 id="composer-heading">어떤 순간을 남겨볼까요?</h2></div>
+          <form id="compose-form">
+            <div id="compose-target" class="compose-target" hidden><span></span><button type="button" class="icon-button tiny" aria-label="기존 기록 선택 해제">×</button></div>
+            <label for="compose-message" class="sr-only">남길 이야기</label>
+            <textarea id="compose-message" name="message" rows="3" maxlength="20000" placeholder="어제 같이 산책하다가 작은 카페를 발견했어. 커피도 좋았는데, 오래 얘기해서 더 좋았음." required></textarea>
+            <div class="composer-footer"><span class="composer-hint">편하게 적어 주세요. 기록에 맞게 정리할게요.</span><button id="compose-submit" class="button primary" type="submit"><span>기록 남기기</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 17 10-10M7 7h10v10"/></svg></button></div>
+            <p id="compose-error" class="form-error" role="alert" hidden></p>
+          </form>
+        </section>
+        <section id="jobs" class="jobs" aria-label="기록 정리 상황" aria-live="polite"></section>
+
+        <div class="feed-toolbar">
+          <div class="feed-heading"><h2 id="feed-heading">모든 기록</h2><span id="entry-count" class="count-badge">0</span></div>
+          <button id="mobile-calendar-toggle" type="button" class="button quiet mobile-calendar-toggle" aria-expanded="false" aria-controls="calendar-panel"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg>달력</button>
+          <label class="search-field"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input id="search" type="search" placeholder="기억 속 한 장면 찾기" aria-label="기록 검색" autocomplete="off"></label>
+        </div>
+        <div id="active-filter" class="active-filter" hidden><span></span><button id="clear-filter" type="button">전체 보기 <span aria-hidden="true">×</span></button></div>
+        <p id="feed-error" class="notice error" role="alert" hidden></p>
+        <div id="feed" class="feed" aria-labelledby="feed-heading"></div>
+        <div id="empty-state" class="empty-state" hidden><span class="empty-icon" aria-hidden="true">✳</span><h3>첫 페이지를 기다리고 있어요</h3><p>함께한 날의 이야기를 위에 남겨 주세요.</p></div>
+        <p id="feed-end" class="feed-end" hidden><span></span>여기까지, 우리가 모은 순간들<span></span></p>
+      </div>
+
+      <aside class="sidebar" aria-label="달력과 기록 안내">
+        <section id="calendar-panel" class="calendar-panel" aria-labelledby="calendar-title">
+          <div class="calendar-top"><p class="eyebrow">날짜로 펼쳐보기</p><button id="calendar-today" class="text-button" type="button">이번 달</button></div>
+          <div class="calendar-heading"><h2 id="calendar-title"></h2><div class="calendar-navigation"><button id="calendar-prev" class="icon-button" type="button" aria-label="이전 달">‹</button><button id="calendar-next" class="icon-button" type="button" aria-label="다음 달">›</button></div></div>
+          <div class="calendar-weekdays" aria-hidden="true"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
+          <div id="calendar-grid" class="calendar-grid" role="group" aria-label="날짜 선택"></div>
+          <p class="calendar-legend"><span></span>함께한 기록이 있는 날</p>
+        </section>
+        <section class="keepsake" aria-labelledby="keepsake-heading"><span class="keepsake-mark" aria-hidden="true">“</span><h2 id="keepsake-heading">기억은 조금씩,<br>우리답게 쌓여요.</h2><p>완벽한 문장이 아니어도 괜찮아요.<br>오늘의 작은 순간부터 남겨봐요.</p><div id="journal-meta" class="journal-meta"></div><span class="keepsake-doodle" aria-hidden="true">♡</span></section>
+        <p class="sidebar-footnote">buku journal <span>·</span> 둘만의 기록</p>
+      </aside>
+    </main>
+    <footer class="site-footer">오래 기억하고 싶은, 우리의 날들.</footer>
+  </div>
+
+  <dialog id="modal" class="modal" aria-labelledby="modal-title">
+    <div class="modal-header"><h2 id="modal-title"></h2><button id="modal-close" class="icon-button" type="button" aria-label="창 닫기">×</button></div>
+    <div id="modal-body" class="modal-body"></div>
+  </dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>
