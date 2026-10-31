@@ -42,6 +42,8 @@ worker_timeout = "5m"
 # journal_dir = "/absolute/path/to/journal"
 ```
 
+상대 날짜는 설정한 `timezone`의 최초 제출 시각을 기준으로 해석합니다. 웹의 오늘 표시와 시각 표시는 `Asia/Seoul` 기준입니다.
+
 지원 키는 `journal_dir`, `state_dir`, `listen`, `timezone`, `codex`, `jj`, `model`, `token_file`, `worker_timeout`입니다. 별도 모델을 지정하지 않으면 패키지의 Codex 기본 모델을 사용합니다.
 
 ## 데이터와 이력
@@ -51,11 +53,13 @@ XDG 환경변수가 있으면 해당 절대 경로를 사용하고, 없으면 �
 | 경로 | 내용 |
 | --- | --- |
 | `~/.local/share/buku-journal/journal/` | 기록과 장소 파일, 독립적인 jj 저장소 |
-| `~/.local/share/buku-journal/inbox/` | 아직 처리되지 않았거나 재확인이 필요한 입력 원문 |
+| `~/.local/share/buku-journal/inbox/` | 제출 원문과 추가 답변 보관본. 완료 후에도 유지 |
 | `~/.local/state/buku-journal/jobs/` | 작업 상태와 제한된 실행 진단 |
 | `~/.local/state/buku-journal/work/` | Codex 임시 작업 사본 |
 | `~/.config/buku-journal/token` | 웹 접속 키 |
 | `~/.codex/` 또는 `$CODEX_HOME` | Codex가 관리하는 인증 정보 |
+
+`inbox/`는 입력 보관용이며 자동 복구 시 읽는 경로는 아닙니다. 작업 상태 복구에는 `jobs/`가 필요합니다. `--journal-dir`을 바꾸면 inbox는 해당 기록 디렉터리의 형제 경로에 생성됩니다.
 
 기록은 `YYYY-MM-DD-제목.md`, 장소는 `장소이름.txt`입니다. Markdown 본문은 짧은 문장과 줄바꿈을 유지하고 장소를 `[장소](./장소이름.txt)`로 연결합니다. TXT는 장소 이름, 주소, 지도 URL 순서입니다. 모르는 정보는 빈 줄로 두며 임의로 채우지 않습니다. Frontmatter는 필요하지 않습니다.
 

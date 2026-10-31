@@ -153,9 +153,7 @@ $marker
 $domain {
     header X-Robots-Tag "noindex, nofollow"
     header Referrer-Policy "no-referrer"
-    reverse_proxy 127.0.0.1:$port {
-        flush_interval -1
-    }
+    reverse_proxy 127.0.0.1:$port
 }
 SITE
 

@@ -56,7 +56,7 @@ func request(s *Server, method, path string, body any, auth bool, headers map[st
 }
 func TestPrivateEndpointsRequireAuthentication(t *testing.T) {
 	s, _ := testServer(t)
-	for _, path := range []string{"/api/entries", "/api/history", "/api/places/" + url.PathEscape("카페.txt"), "/api/jobs", "/api/jobs/abc/events"} {
+	for _, path := range []string{"/api/entries", "/api/history", "/api/places/" + url.PathEscape("카페.txt"), "/api/jobs"} {
 		r := request(s, "GET", path, nil, false, nil)
 		if r.Code != 401 || strings.Contains(r.Body.String(), "개인적인 기억") {
 			t.Fatalf("private endpoint %s returned %d %s", path, r.Code, r.Body.String())

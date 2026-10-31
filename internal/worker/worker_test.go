@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -57,6 +58,18 @@ func setup(t *testing.T, script string) *fixture {
 	t.Cleanup(func() { f.manager.Close() })
 	return f
 }
+
+// Get provides a snapshot lookup for worker assertions.
+func (m *Manager) Get(id string) (Job, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	j, ok := m.jobs[id]
+	if !ok {
+		return Job{}, false
+	}
+	return clone(j), true
+}
+
 func waitJob(t *testing.T, m *Manager, id, status string) Job {
 	t.Helper()
 	deadline := time.Now().Add(10 * time.Second)
@@ -476,5 +489,35 @@ func TestRetryWaitsForCancelledProcessExit(t *testing.T) {
 	case <-m.wake:
 		t.Fatal("retry enqueued before process exit")
 	default:
+	}
+}
+
+func TestWorkerUsesConfiguredTimezone(t *testing.T) {
+	capture := filepath.Join(t.TempDir(), "input")
+	f := setup(t, "printf '%s' \"$input\" > "+shellQuote(capture)+`
+printf '%s' '{"status":"ready","summary":"확인했어요.","questions":[]}' > "$out"`)
+	f.manager.Close()
+	f.manager.location = time.FixedZone("America/New_York", -4*60*60)
+	job, err := f.manager.Submit("어제 만났어", "", "timezone")
+	if err != nil {
+		t.Fatal(err)
+	}
+	job.CreatedAt = "2026-11-01T01:30:00Z"
+	f.manager.run(context.Background(), job)
+	waitJob(t, f.manager, job.ID, "completed")
+	input, err := os.ReadFile(capture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, payload, ok := strings.Cut(string(input), "USER DATA (JSON):\n")
+	var data struct{ SubmittedAt, Timezone string }
+	if !ok || json.Unmarshal([]byte(payload), &data) != nil {
+		t.Fatalf("missing submission context: %s", input)
+	}
+	if data.SubmittedAt != "2026-10-31T21:30:00-04:00" || data.Timezone != "America/New_York" {
+		t.Fatalf("wrong date or timezone: %#v", data)
+	}
+	if strings.Contains(string(input), "Asia/Seoul") {
+		t.Fatal("worker still instructs using Seoul time")
 	}
 }

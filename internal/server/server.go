@@ -9,7 +9,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"io/fs"
 	"net"
@@ -94,11 +93,9 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /api/history/{id}/revert", s.revert)
 	s.mux.HandleFunc("GET /api/jobs", func(w http.ResponseWriter, r *http.Request) { write(w, 200, map[string]any{"jobs": s.jobs.List()}) })
 	s.mux.HandleFunc("POST /api/jobs", s.submit)
-	s.mux.HandleFunc("GET /api/jobs/{id}", s.job)
 	s.mux.HandleFunc("POST /api/jobs/{id}/answers", s.answer)
 	s.mux.HandleFunc("POST /api/jobs/{id}/cancel", s.cancelJob)
 	s.mux.HandleFunc("POST /api/jobs/{id}/retry", s.retryJob)
-	s.mux.HandleFunc("GET /api/jobs/{id}/events", s.events)
 	s.mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		name := strings.TrimPrefix(r.URL.Path, "/")
 		if name == "" {
@@ -317,14 +314,6 @@ func (s *Server) submit(w http.ResponseWriter, r *http.Request) {
 	}
 	write(w, 202, map[string]any{"job": j})
 }
-func (s *Server) job(w http.ResponseWriter, r *http.Request) {
-	j, ok := s.jobs.Get(r.PathValue("id"))
-	if !ok {
-		problem(w, 404, "작업을 찾을 수 없어요.")
-		return
-	}
-	write(w, 200, map[string]any{"job": j})
-}
 func (s *Server) answer(w http.ResponseWriter, r *http.Request) {
 	var b struct {
 		Message string `json:"message"`
@@ -354,43 +343,6 @@ func (s *Server) retryJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	write(w, 202, map[string]any{"job": j})
-}
-func (s *Server) events(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	if _, ok := s.jobs.Get(id); !ok {
-		problem(w, 404, "작업을 찾을 수 없어요.")
-		return
-	}
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		problem(w, 500, "스트리밍을 지원하지 않아요.")
-		return
-	}
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("X-Accel-Buffering", "no")
-	timer := time.NewTicker(time.Second)
-	defer timer.Stop()
-	last := ""
-	for {
-		j, _ := s.jobs.Get(id)
-		b, _ := json.Marshal(map[string]any{"job": j})
-		if string(b) != last {
-			_, e := fmt.Fprintf(w, "data: %s\n\n", b)
-			if e != nil {
-				return
-			}
-			flusher.Flush()
-			last = string(b)
-		}
-		if j.Status == "completed" || j.Status == "failed" || j.Status == "cancelled" || j.Status == "needs_input" {
-			return
-		}
-		select {
-		case <-r.Context().Done():
-			return
-		case <-timer.C:
-		}
-	}
 }
 func decode(w http.ResponseWriter, r *http.Request, v any) bool {
 	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
