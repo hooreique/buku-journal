@@ -101,7 +101,13 @@ func (s *Server) routes() {
 		if name == "" {
 			name = "index.html"
 		}
-		if name != "index.html" && name != "app.js" && name != "style.css" {
+		types := map[string]string{
+			"index.html": "text/html; charset=utf-8", "app.js": "text/javascript; charset=utf-8", "style.css": "text/css; charset=utf-8",
+			"manifest.webmanifest": "application/manifest+json", "icon.svg": "image/svg+xml",
+			"pwa-192.png": "image/png", "pwa-512.png": "image/png", "apple-touch-icon.png": "image/png",
+		}
+		contentType, allowed := types[name]
+		if !allowed {
 			http.NotFound(w, r)
 			return
 		}
@@ -110,8 +116,7 @@ func (s *Server) routes() {
 			http.NotFound(w, r)
 			return
 		}
-		types := map[string]string{"index.html": "text/html; charset=utf-8", "app.js": "text/javascript; charset=utf-8", "style.css": "text/css; charset=utf-8"}
-		w.Header().Set("Content-Type", types[name])
+		w.Header().Set("Content-Type", contentType)
 		w.Header().Set("Cache-Control", "no-cache")
 		_, _ = w.Write(b)
 	})

@@ -20,3 +20,5 @@ cat "${XDG_CONFIG_HOME:-$HOME/.config}/buku-journal/token"
 ```
 
 개발·검증, 실행 설정, 데이터 관리와 배포는 [CONTRIBUTING.md](CONTRIBUTING.md)를 참고하세요.
+
+Android Chrome에서는 HTTPS 주소로 접속한 뒤 메뉴의 앱 설치를 사용합니다. 앱 이름은 `부끄저널`, 짧은 이름은 `bukuj`입니다. 이전에 만든 홈 화면 바로가기는 삭제하고 다시 설치하세요. 설치용 manifest와 아이콘은 로그인 없이 제공됩니다.

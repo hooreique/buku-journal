@@ -5,6 +5,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
+	"image/png"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -157,7 +159,11 @@ func TestEditingChecksSourceHashAndPreservesNewerContent(t *testing.T) {
 }
 func TestOnlyEmbeddedPublicAssetsAreServed(t *testing.T) {
 	s, _ := testServer(t)
-	for path, contentType := range map[string]string{"/": "text/html", "/app.js": "text/javascript", "/style.css": "text/css"} {
+	for path, contentType := range map[string]string{
+		"/": "text/html", "/app.js": "text/javascript", "/style.css": "text/css",
+		"/manifest.webmanifest": "application/manifest+json", "/icon.svg": "image/svg+xml",
+		"/pwa-192.png": "image/png", "/pwa-512.png": "image/png", "/apple-touch-icon.png": "image/png",
+	} {
 		r := request(s, "GET", path, nil, false, nil)
 		if r.Code != 200 || !strings.HasPrefix(r.Header().Get("Content-Type"), contentType) {
 			t.Fatalf("asset %s: %d %s", path, r.Code, r.Header())
@@ -176,6 +182,42 @@ func TestOnlyEmbeddedPublicAssetsAreServed(t *testing.T) {
 		}
 	}
 }
+func TestInstallManifestAndIcons(t *testing.T) {
+	s, _ := testServer(t)
+	r := request(s, "GET", "/manifest.webmanifest", nil, false, nil)
+	var manifest struct {
+		Name, Scope, Display string
+		ShortName            string `json:"short_name"`
+		StartURL             string `json:"start_url"`
+		Icons                []struct {
+			Src, Sizes, Type, Purpose string
+		}
+	}
+	if err := json.Unmarshal(r.Body.Bytes(), &manifest); err != nil {
+		t.Fatal(err)
+	}
+	if manifest.Name == "" || manifest.ShortName != "bukuj" || manifest.StartURL != "/" || manifest.Scope != "/" || manifest.Display != "standalone" {
+		t.Fatalf("invalid install metadata: %s", r.Body.String())
+	}
+	for _, size := range []string{"192x192", "512x512"} {
+		found := false
+		for _, icon := range manifest.Icons {
+			if icon.Sizes != size || icon.Purpose != "any" {
+				continue
+			}
+			asset := request(s, "GET", icon.Src, nil, false, nil)
+			cfg, err := png.DecodeConfig(asset.Body)
+			if err != nil || icon.Type != "image/png" || fmt.Sprintf("%dx%d", cfg.Width, cfg.Height) != size {
+				t.Fatalf("invalid install icon %s: %+v %v", icon.Src, cfg, err)
+			}
+			found = true
+		}
+		if !found {
+			t.Fatalf("missing install icon %s", size)
+		}
+	}
+}
+
 func TestTokenCreationIsPrivateAndPersistent(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config", "token")
 	one, err := Token(path)
