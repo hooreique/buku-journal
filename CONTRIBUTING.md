@@ -77,38 +77,40 @@ Codex는 임시 사본에서 작업하고, Go 서버가 실제 변경과 파일 
 
 백업할 때는 앱을 잠시 정지하고 데이터 디렉터리 전체를 복사하세요. jj의 `.jj`와 Git backend 메타데이터도 포함해야 이력이 보존됩니다. 작업 복구까지 보존하려면 state 디렉터리도 함께 백업합니다. 인증 정보와 접속 키 백업은 별도로 비공개 보관하세요.
 
-## hooddy 배포
+## hooddy 0.2.0 배포
 
-bukupan과 동일하게 systemd **사용자 서비스**와 hooddy의 일반 Caddy 사이트 파일을 사용합니다. hooddy가 이미 설치되어 있고, 사용자 linger가 활성화되어 있어야 합니다. 배포 명령은 앱 설치·갱신, 백엔드 상태 검사, Caddy 전체 설정 검사와 reload를 수행합니다. 배포가 실패하면 이전 서비스·사이트 설정을 복구합니다.
+서비스를 실행할 사용자의 `~/.config/hooddy/flake.nix`에 앱 입력과 모듈을 추가합니다. 다음은 x86_64 Linux 예시이며 ARM64에서는 `aarch64-linux`를 지정합니다. 기존 설정이 있다면 다른 입력과 모듈은 유지합니다.
 
-```sh
-jj st
-nix run .#deploy
+```nix
+{
+  inputs.hooddy.url = "github:hooreique/hooddy";
+  inputs.buku-journal.url = "github:hooreique/buku-journal";
+  outputs = { hooddy, buku-journal, ... }: {
+    hooddyConfigurations.default = hooddy.lib.hooddyConfiguration {
+      system = "x86_64-linux";
+      modules = [
+        buku-journal.hooddyModules.default
+        {
+          services.buku-journal = {
+            enable = true;
+            domain = "buku-journal.hooreique.com";
+            port = 3002;
+            # journalDir = "/absolute/path/to/journal";
+          };
+        }
+      ];
+    };
+  };
+}
 ```
 
-기본 도메인은 `buku-journal.hooreique.com`, 백엔드는 `127.0.0.1:3002`입니다. 외부 도메인은 해당 hooddy 서버로 연결되어 있어야 합니다. 다른 값을 사용하려면 매번 같은 옵션으로 배포합니다.
+이전 `nix run .#deploy`로 설치했다면 전환 전에 `systemctl --user cat buku-journal.service`로 경로 설정을 확인하고 `systemctl --user disable --now buku-journal.service`로 기존 서비스를 중지합니다. 같은 사용자로 실행하고 일기, 상태, 토큰 경로를 유지하세요. 사용자 지정 XDG 경로나 `CODEX_HOME`은 새 systemd 사용자 서비스 환경에도 설정해야 합니다. hooddy 0.1의 사이트 백업과 Caddy 전환은 [hooddy 업그레이드 절차](https://github.com/hooreique/hooddy/blob/main/CONTRIBUTING.md#moving-from-01)를 따릅니다.
 
 ```sh
-nix run .#deploy -- \
-  --domain buku-journal.hooreique.com \
-  --port 3002 \
-  --journal-dir /absolute/path/to/journal
+cd ~/.config/hooddy
+nix flake lock
+hooddy switch
+systemctl --user status hooddy-buku-journal.service
 ```
 
-배포가 관리하는 파일:
-
-- `~/.config/systemd/user/buku-journal.service`
-- `~/.config/hooddy/sites.d/buku-journal.caddy`
-- `~/.local/state/buku-journal/package` — 실행 패키지의 Nix GC root
-
-자신이 생성한 관리 표식이 있는 파일만 교체하며, 기존 일기 파일은 이동·가져오기·삭제하지 않습니다. hooddy의 다른 사이트나 master Caddyfile도 수정하지 않습니다. 서비스는 자동 시작을 활성화합니다. 프록시 설정만 다시 적용하려면 `hooddy restart`를 사용합니다.
-
-```sh
-systemctl --user status buku-journal.service
-journalctl --user -u buku-journal.service -n 50 --no-pager
-systemctl --user restart buku-journal.service
-systemctl --user stop buku-journal.service
-```
-
-앱 업데이트 후에는 `jj st`와 `nix run .#deploy`를 다시 실행합니다. 데이터와 접속 키는 유지됩니다. 자동 시작까지 중지하려면 `systemctl --user disable --now buku-journal.service`를 사용합니다.
-
+hooddy는 루프백 백엔드의 `/healthz`를 확인하고 Caddy 설정을 적용합니다. 로그는 `journalctl --user -u hooddy-buku-journal.service`에서 확인합니다. 앱 업데이트는 이 디렉터리에서 `nix flake update buku-journal` 후 `hooddy switch`로 적용합니다. 서비스를 내리려면 `services.buku-journal.enable = false;`로 변경하고 다시 전환합니다.
