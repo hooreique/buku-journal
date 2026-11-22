@@ -77,6 +77,16 @@ Codex는 임시 사본에서 작업하고, Go 서버가 실제 변경과 파일 
 
 백업할 때는 앱을 잠시 정지하고 데이터 디렉터리 전체를 복사하세요. jj의 `.jj`와 Git backend 메타데이터도 포함해야 이력이 보존됩니다. 작업 복구까지 보존하려면 state 디렉터리도 함께 백업합니다. 인증 정보와 접속 키 백업은 별도로 비공개 보관하세요.
 
+SSH로 서버 밖에 스냅샷을 보관하려면 [snapshot.sh.template](snapshot.sh.template)을 작업 저장소 밖으로 복사하고, 상단의 SSH 대상과 서비스·데이터 경로를 수정한 뒤 Bash로 실행하세요.
+
+```sh
+cp snapshot.sh.template ~/snapshot-buku-journal.sh
+# ~/snapshot-buku-journal.sh 상단의 설정을 수정합니다.
+bash ~/snapshot-buku-journal.sh
+```
+
+서버의 SSH 계정에서 Bash, tar, flock, systemd 사용자 서비스 제어를 사용할 수 있어야 합니다. 실행 중인 서비스를 잠시 멈춰 일기, inbox, state를 하나의 압축 파일로 전송한 뒤 서비스를 다시 시작합니다. 로컬에서 압축 파일을 읽을 수 있는지 확인한 후 기본 경로인 `~/Backups/buku-journal/`에 저장합니다. 압축 파일 내부 경로는 서버의 파일시스템 루트 기준입니다. 웹 접속 키와 Codex 인증 정보는 별도 보관 대상입니다.
+
 ## hooddy 0.2.0 배포
 
 서비스를 실행할 사용자의 `~/.config/hooddy/flake.nix`에 앱 입력과 모듈을 추가합니다. 다음은 x86_64 Linux 예시이며 ARM64에서는 `aarch64-linux`를 지정합니다. 기존 설정이 있다면 다른 입력과 모듈은 유지합니다.

@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# Copy outside the checkout and edit these settings before running with Bash.
+set -euo pipefail
+umask 077
+
+ssh_target='user@example.invalid'
+ssh_options=(-F /dev/null)
+remote_service='hooddy-buku-journal.service'
+remote_journal='.local/share/buku-journal/journal'
+remote_state='.local/state/buku-journal'
+backup_dir="$HOME/Backups/buku-journal"
+
+mkdir -p -- "$backup_dir"
+stamp=$(date -u +%Y%m%dT%H%M%SZ)
+partial=$(mktemp -- "$backup_dir/.snapshot-$stamp.XXXXXXXX")
+trap 'rm -f -- "$partial"' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+{
+    printf 'service=%q\njournal=%q\nstate=%q\n' "$remote_service" "$remote_journal" "$remote_state"
+    cat <<'REMOTE'
+set -euo pipefail
+cd "$HOME"
+journal=${journal%/}
+state=${state%/}
+inbox="$(dirname -- "$journal")/inbox"
+
+restart=0
+cleanup() {
+    status=$?
+    if (( restart )) && ! systemctl --user start -- "$service" >&2; then
+        printf 'Failed to restart %s\n' "$service" >&2
+        status=1
+    fi
+    exit "$status"
+}
+trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+# Check the paths before taking the service offline.
+for path in "$journal/.jj" "$inbox" "$state"; do
+    if [[ ! -d "$path" ]]; then
+        printf 'Missing backup directory: %s\n' "$path" >&2
+        exit 1
+    fi
+done
+
+# Serialize snapshots targeting the same state directory.
+exec 9<"$state"
+flock -x 9
+
+journal=$(cd -P -- "$journal" && pwd)
+inbox=$(cd -P -- "$inbox" && pwd)
+state=$(cd -P -- "$state" && pwd)
+active_state=$(systemctl --user show -p ActiveState --value -- "$service")
+if [[ $(systemctl --user show -p LoadState --value -- "$service") != loaded ]]; then
+    printf 'Service is not loaded: %s\n' "$service" >&2
+    exit 1
+fi
+case "$active_state" in
+    active)
+        restart=1
+        systemctl --user stop -- "$service" >&2
+        ;;
+    inactive|failed) ;;
+    *)
+        printf 'Unexpected state for %s: %s\n' "$service" "$active_state" >&2
+        exit 1
+        ;;
+esac
+
+# Preserve source paths relative to the server's filesystem root.
+tar -czf - \
+    -C / -- "${journal#/}" "${inbox#/}" "${state#/}"
+REMOTE
+} | ssh -T "${ssh_options[@]}" -- "$ssh_target" 'bash -s' > "$partial"
+
+tar -tzf "$partial" > /dev/null
+snapshot="$backup_dir/snapshot-$stamp-${partial##*.}.tar.gz"
+ln -- "$partial" "$snapshot"
+printf '%s\n' "$snapshot"
